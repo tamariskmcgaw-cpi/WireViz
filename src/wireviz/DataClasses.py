@@ -42,6 +42,8 @@ class Options:
     bgcolor_bundle: Optional[Color] = None
     color_mode: ColorMode = 'SHORT'
     mini_bom_mode: bool = True
+    rank_sep: int = 2
+    node_sep: float = 0.33
 
     def __post_init__(self):
         if not self.bgcolor_node:
@@ -232,6 +234,7 @@ class Cable:
     show_wirenumbers: Optional[bool] = None
     ignore_in_bom: bool = False
     additional_components: List[AdditionalComponent] = field(default_factory=list)
+    simple: bool = False
 
     def __post_init__(self) -> None:
 
