@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import os
 from pathlib import Path
 import sys
 from typing import Any, Tuple, Union
@@ -10,7 +9,7 @@ from typing import Any, Tuple, Union
 import yaml
 
 if __name__ == '__main__':
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    sys.path.insert(0, str(Path(__file__).parents[1]))
 
 from wireviz import __version__
 from wireviz.DataClasses import Metadata, Options, Tweak
@@ -217,9 +216,8 @@ def parse_file(yaml_file: str, file_out: Union[str, Path] = None) -> None:
         yaml_input = file.read()
 
     if not file_out:
-        fn, fext = os.path.splitext(yaml_file)
-        file_out = fn
-    file_out = os.path.abspath(file_out)
+        file_out = Path(yaml_file).stem
+    file_out = Path(file_out).resolve()
 
     parse(yaml_input, file_out=file_out)
 
@@ -240,31 +238,30 @@ def main():
 
     args = parse_cmdline()
 
-    if not os.path.exists(args.input_file):
+    try:
+        with open_file_read(args.input_file) as fh:
+            yaml_input = fh.read()
+
+        if args.prepend_file:
+            try:
+                with open_file_read(args.prepend_file) as fh:
+                    prepend = fh.read()
+                    yaml_input = prepend + yaml_input
+            except IOError:
+                print(f'Error: prepend input file {args.prepend_file} inaccessible or does not exist, check path')
+                sys.exit(1)
+
+        if not args.output_file:
+            file_out = args.input_file
+            file_out = Path(args.input_file).stem
+        else:
+            file_out = args.output_file 
+        file_out = Path(file_out).resolve()
+
+        parse(yaml_input, file_out=file_out)
+    except OSError:
         print(f'Error: input file {args.input_file} inaccessible or does not exist, check path')
         sys.exit(1)
-
-    with open_file_read(args.input_file) as fh:
-        yaml_input = fh.read()
-
-    if args.prepend_file:
-        if not os.path.exists(args.prepend_file):
-            print(f'Error: prepend input file {args.prepend_file} inaccessible or does not exist, check path')
-            sys.exit(1)
-        with open_file_read(args.prepend_file) as fh:
-            prepend = fh.read()
-            yaml_input = prepend + yaml_input
-
-    if not args.output_file:
-        file_out = args.input_file
-        pre, _ = os.path.splitext(file_out)
-        file_out = pre  # extension will be added by graphviz output function
-    else:
-        file_out = args.output_file
-    file_out = os.path.abspath(file_out)
-
-    parse(yaml_input, file_out=file_out)
-
 
 if __name__ == '__main__':
     main()

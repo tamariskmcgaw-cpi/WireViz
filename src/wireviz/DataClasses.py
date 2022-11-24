@@ -278,26 +278,26 @@ class Cable:
 
         self.connections = []
 
-        if self.wirecount:  # number of wires explicitly defined
-            if self.colors:  # use custom color palette (partly or looped if needed)
-                pass
-            elif self.color_code:  # use standard color palette (partly or looped if needed)
-                if self.color_code not in COLOR_CODES:
-                    raise Exception('Unknown color code')
-                self.colors = COLOR_CODES[self.color_code]
-            else:  # no colors defined, add dummy colors
-                self.colors = [''] * self.wirecount
+        if not self.wirecount:
+            if not (self.colors or self.wirelabels):
+                raise Exception('Unknown number of wires. Must specify wirecount, wirenames or colors (implicit length)')
+            self.wirecount = max(len(self.colors), len(self.wirelabels))
 
-            # make color code loop around if more wires than colors
-            if self.wirecount > len(self.colors):
-                m = self.wirecount // len(self.colors) + 1
-                self.colors = self.colors * int(m)
-            # cut off excess after looping
-            self.colors = self.colors[:self.wirecount]
-        else:  # wirecount implicit in length of color list
-            if not self.colors:
-                raise Exception('Unknown number of wires. Must specify wirecount or colors (implicit length)')
-            self.wirecount = len(self.colors)
+        if self.colors:  # use custom color palette (partly or looped if needed)
+            pass
+        elif self.color_code:  # use standard color palette (partly or looped if needed)
+            if self.color_code not in COLOR_CODES:
+                raise Exception('Unknown color code')
+            self.colors = COLOR_CODES[self.color_code]
+        else:  # no colors defined, add dummy colors
+            self.colors = [''] * self.wirecount
+
+        # make color code loop around if more wires than colors
+        if self.wirecount > len(self.colors):
+            m = self.wirecount // len(self.colors) + 1
+            self.colors = self.colors * int(m)
+        # cut off excess after looping
+        self.colors = self.colors[:self.wirecount]
 
         if self.wirelabels:
             if self.shield and 's' in self.wirelabels:
