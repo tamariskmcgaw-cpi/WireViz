@@ -49,20 +49,20 @@ class Harness:
             if name is not None and name in self.connectors:
                 connector = self.connectors[name]
                 # check if provided name is ambiguous
-                if pin in connector.pins and pin in connector.pinlabels:
-                    if connector.pins.index(pin) != connector.pinlabels.index(pin):
-                        raise Exception(f'{name}:{pin} is defined both in pinlabels and pins, for different pins.')
-                    # TODO: Maybe issue a warning if present in both lists but referencing the same pin?
-                if pin in connector.pinlabels:
-                    if connector.pinlabels.count(pin) > 1:
-                        raise Exception(f'{name}:{pin} is defined more than once.')
-                        # TODO: allow duplicate pin labels for GND
-                    index = connector.pinlabels.index(pin)
-                    pin = connector.pins[index] # map pin name to pin number
-                    if name == from_name:
-                        from_pin = pin
-                    if name == to_name:
-                        to_pin = pin
+                # if pin in connector.pins and pin in connector.pinlabels:
+                #     if connector.pins.index(pin) != connector.pinlabels.index(pin):
+                #         raise Exception(f'{name}:{pin} is defined both in pinlabels and pins, for different pins.')
+                #     # TODO: Maybe issue a warning if present in both lists but referencing the same pin?
+                # if pin in connector.pinlabels:
+                #     if connector.pinlabels.count(pin) > 1:
+                #         raise Exception(f'{name}:{pin} is defined more than once.')
+                #         # TODO: allow duplicate pin labels for GND
+                #     index = connector.pinlabels.index(pin)
+                #     pin = connector.pins[index] # map pin name to pin number
+                #     if name == from_name:
+                #         from_pin = pin
+                #     if name == to_name:
+                #         to_pin = pin
                 if not pin in connector.pins:
                     raise Exception(f'{name}:{pin} not found.')
 
@@ -150,11 +150,12 @@ class Harness:
                 for pinindex, (pinname, pinlabel, pincolor) in enumerate(zip_longest(connector.pins, connector.pinlabels, connector.pincolors)):
                     if connector.hide_disconnected_pins and not connector.visible_pins.get(pinname, False):
                         continue
-                    pinhtml.append('   <tr>')
+                    style = "bgcolor='#808080'" if not connector.visible_pins.get(pinname, False) else ""
+                    pinhtml.append(f'   <tr>')
                     if connector.ports_left:
-                        pinhtml.append(f'    <td port="p{pinindex+1}l">{pinname}</td>')
-                    if pinlabel:
-                        pinhtml.append(f'    <td>{pinlabel}</td>')
+                        pinhtml.append(f'    <td port="p{pinindex+1}l" {style}>{pinindex+1 if connector.show_pinnumbers else pinname}</td>')
+                    if connector.show_pinnumbers:
+                        pinhtml.append(f'    <td {style}>{pinname}</td>')
                     if connector.pincolors:
                         if pincolor in wv_colors._color_hex.keys():
                             pinhtml.append(f'    <td sides="tbl">{translate_color(pincolor, self.options.color_mode)}</td>')
@@ -167,7 +168,7 @@ class Harness:
                             pinhtml.append( '    <td colspan="2"></td>')
 
                     if connector.ports_right:
-                        pinhtml.append(f'    <td port="p{pinindex+1}r">{pinname}</td>')
+                        pinhtml.append(f'    <td port="p{pinindex+1}r" {style}>{pinindex+1 if connector.show_pinnumbers else pinname}</td>')
                     pinhtml.append('   </tr>')
 
                 pinhtml.append('  </table>')

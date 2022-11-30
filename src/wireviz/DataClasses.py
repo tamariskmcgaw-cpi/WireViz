@@ -136,11 +136,12 @@ class Connector:
     image: Optional[Image] = None
     notes: Optional[MultilineHypertext] = None
     pins: List[Pin] = field(default_factory=list)
-    pinlabels: List[Pin] = field(default_factory=list)
+    pinlabels: Dict[Pin, str] = field(default_factory=dict)
     pincolors: List[Color] = field(default_factory=list)
     color: Optional[Color] = None
     show_name: Optional[bool] = None
     show_pincount: Optional[bool] = None
+    show_pinnumbers: bool = False
     hide_disconnected_pins: bool = False
     autogenerate: bool = False
     loops: List[List[Pin]] = field(default_factory=list)
@@ -162,14 +163,33 @@ class Connector:
             self.pincount = 1
 
         if not self.pincount:
-            self.pincount = max(len(self.pins), len(self.pinlabels), len(self.pincolors))
+            self.pincount = max(len(self.pins), len(self.pincolors))
             if not self.pincount:
-                raise Exception('You need to specify at least one, pincount, pins, pinlabels, or pincolors')
+                raise Exception('You need to specify at least one, pincount, pins, or pincolors')
+        
+        if self.show_pinnumbers and not (self.pins or self.pinlabels):
+            # if there aren't any names or labels showing the pin numbers will result in duplication
+            self.show_pinnumbers = False
 
         # create default list for pins (sequential) if not specified
         if not self.pins:
             self.pins = list(range(1, self.pincount + 1))
 
+            # populate the list with any defined pin names.
+            if len(self.pinlabels) > self.pincount:
+                raise Exception(f"Too many pin names have been specified in {self.name}")
+
+            for l,n in self.pinlabels.items():
+                if str(l).isdigit():
+                    self.pins[int(l)-1] = n
+                else:
+                    sep = "-" if "-" in l else ","
+                    l = [int(i) for i in l.split(sep)]
+                    if len(l) == 2:
+                        l = [i for i in range(l[0]-1, l[1])]
+                    for i in l:
+                        self.pins[i-1] = f"{i}:{n}"
+            
         if len(self.pins) != len(set(self.pins)):
             raise Exception('Pins are not unique')
 
@@ -178,6 +198,7 @@ class Connector:
 
         if self.show_pincount is None:
             self.show_pincount = self.style != 'simple' # hide pincount for simple (1 pin) connectors by default
+        
 
         for loop in self.loops:
             # TODO: check that pins to connect actually exist
@@ -283,21 +304,22 @@ class Cable:
                 raise Exception('Unknown number of wires. Must specify wirecount, wirenames or colors (implicit length)')
             self.wirecount = max(len(self.colors), len(self.wirelabels))
 
-        if self.colors:  # use custom color palette (partly or looped if needed)
-            pass
-        elif self.color_code:  # use standard color palette (partly or looped if needed)
-            if self.color_code not in COLOR_CODES:
-                raise Exception('Unknown color code')
-            self.colors = COLOR_CODES[self.color_code]
-        else:  # no colors defined, add dummy colors
-            self.colors = [''] * self.wirecount
+        if self.wirecount:  # number of wires explicitly defined
+            if self.colors:  # use custom color palette (partly or looped if needed)
+                pass
+            elif self.color_code:  # use standard color palette (partly or looped if needed)
+                if self.color_code not in COLOR_CODES:
+                    raise Exception('Unknown color code')
+                self.colors = COLOR_CODES[self.color_code]
+            else:  # no colors defined, add dummy colors
+                self.colors = [''] * self.wirecount
 
-        # make color code loop around if more wires than colors
-        if self.wirecount > len(self.colors):
-            m = self.wirecount // len(self.colors) + 1
-            self.colors = self.colors * int(m)
-        # cut off excess after looping
-        self.colors = self.colors[:self.wirecount]
+            # make color code loop around if more wires than colors
+            if self.wirecount > len(self.colors):
+                m = self.wirecount // len(self.colors) + 1
+                self.colors = self.colors * int(m)
+            # cut off excess after looping
+            self.colors = self.colors[:self.wirecount]
 
         if self.wirelabels:
             if self.shield and 's' in self.wirelabels:

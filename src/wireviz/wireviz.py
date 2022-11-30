@@ -99,7 +99,7 @@ def parse(yaml_input: str, file_out: Tuple[str, Path] = None, return_types: Unio
                 expected_index = index
                 break
         else:
-            raise Exception('First item not found anywhere.')
+            raise Exception(f'First item ({first_item}) not found anywhere.')
         expected_index = 1 - expected_index  # flip once since it is flipped back at the *beginning* of every loop
 
         # check that all iterable items (lists and dicts) are the same length
@@ -125,7 +125,7 @@ def parse(yaml_input: str, file_out: Tuple[str, Path] = None, return_types: Unio
                     raise Exception(f'{item} is not in {expected_section}')
                 continue
             if itemcount is not None and itemcount_new != itemcount:
-                raise Exception('All lists and dict lists must be the same length!')
+                raise Exception(f'All lists and dict lists must be the same length! {item}')
             itemcount = itemcount_new
         if itemcount is None:
             raise Exception('No item revealed the number of connections to make!')
@@ -167,24 +167,28 @@ def parse(yaml_input: str, file_out: Tuple[str, Path] = None, return_types: Unio
 
         # actually connect components using connection list
         for i, item in enumerate(connection_list):
-            id = item[0][0]  # TODO: make more elegant/robust/pythonic
-            if id in harness.cables:
-                for j, con in enumerate(item):
-                    if i == 0:  # list started with a cable, no connector to join on left side
-                        from_name = None
-                        from_pin  = None
-                    else:
-                        from_name = connection_list[i-1][j][0]
-                        from_pin  = connection_list[i-1][j][1]
-                    via_name  = item[j][0]
-                    via_pin   = item[j][1]
-                    if i == len(connection_list) - 1:  # list ends with a cable, no connector to join on right side
-                        to_name   = None
-                        to_pin    = None
-                    else:
-                        to_name   = connection_list[i+1][j][0]
-                        to_pin    = connection_list[i+1][j][1]
-                    harness.connect(from_name, from_pin, via_name, via_pin, to_name, to_pin)
+            try:
+                id = item[0][0]  # TODO: make more elegant/robust/pythonic
+                if id in harness.cables:
+                    for j, con in enumerate(item):
+                        if i == 0:  # list started with a cable, no connector to join on left side
+                            from_name = None
+                            from_pin  = None
+                        else:
+                            from_name = connection_list[i-1][j][0]
+                            from_pin  = connection_list[i-1][j][1]
+                        via_name  = item[j][0]
+                        via_pin   = item[j][1]
+                        if i == len(connection_list) - 1:  # list ends with a cable, no connector to join on right side
+                            to_name   = None
+                            to_pin    = None
+                        else:
+                            to_name   = connection_list[i+1][j][0]
+                            to_pin    = connection_list[i+1][j][1]
+                        harness.connect(from_name, from_pin, via_name, via_pin, to_name, to_pin)
+            except KeyError as e:
+                # TODO: add a way to check if an empty connection has been defined.
+                raise Exception(f"Connection {connection[0]} isn't the right length")
 
     if "additional_bom_items" in yaml_data:
         for line in yaml_data["additional_bom_items"]:
@@ -215,9 +219,7 @@ def parse_file(yaml_file: str, file_out: Union[str, Path] = None) -> None:
     with open_file_read(yaml_file) as file:
         yaml_input = file.read()
 
-    if not file_out:
-        file_out = Path(yaml_file).stem
-    file_out = Path(file_out).resolve()
+    file_out = Path(yaml_file).stem if not file_out else Path(file_out).resolve()
 
     parse(yaml_input, file_out=file_out)
 
